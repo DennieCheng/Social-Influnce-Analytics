@@ -1,0 +1,391 @@
+---
+title: "High Note "
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(pastecs)
+library(ggplot2)
+library(MatchIt)
+library(car)
+library(corrgram)
+library(MASS)
+
+```
+
+
+```{r}
+# read data into table HNdata
+HNdata <- data.frame(read.csv("/Users/NINI/Desktop/Master Degree of Business Analytics/Courses/277 Customer and Social Analytics/Midterm exam/HighNote Data Midterm.csv"))
+# data is seperated into adopter group and non-adopter group
+HNdata_0 <- filter(HNdata, adopter == 0)
+HNdata_1 <- filter(HNdata, adopter == 1)
+```
+Part-1:  Statistics of variables
+From below statistics summary and graphs of mean value comparison, most varibales' distributions are skewed very much in both groups (adopter and non-adopter), except demographic features, such as age, gender, tenure, the country area came from, average friend age, and the average proportion of male friends. However, it also caught our eyes that the mean value of adopter is much higher than that of non-adopter from the perspective of peer / social network and user engagement activities on the music platform, except "good_country".
+We can initially conclude that the users' behaviors varied very much and obviously influenced by their network on the platform and their involvement on the platform.
+
+Detailed analysis is following,
+1) The ratio of “adopter” in the whole observations is 3527/40300 = 8.8%
+2) “age”, “average age of friends” and “tenure” in both groups have similar distribution and mean value.
+3) Adopters are more male, they have more friends (slightly more male friends) and more friends who are premium subscribers on average, friends of them are more diverse (from many different countries) than non-adopters. Adopters are slightly less from US/UK/DE than non-adopters.
+4) Average number of songs listened by adopters is around twice that of by non-adopters; average number of adopters’ loved tracks is 3 times that of non-adopters; average number of adopters’ posts is 4 times that of non-adopters; average number of playlists created by adopters is around 1.6 times that of by non-adopters; average number of shouts received by adopters is around 3 times that of by non-adopters.
+```{r}
+#general statistics of two groups
+vars <- c("age", "male", "avg_friend_age", "avg_friend_male", "friend_cnt", "friend_country_cnt", "subscriber_friend_cnt", "songsListened", "lovedTracks", "posts", "playlists", "shouts", "tenure", "good_country")
+
+# "statistic of adopter"
+format(stat.desc(HNdata_1[vars]), scientific = F)
+
+# "statistic of non-adopter"
+format(stat.desc(HNdata_0[vars]), scientific = F)
+
+#compare mean value of each variables of adopter group and non-adopter group
+mean_adopter <- as.matrix(colMeans(HNdata_1))
+mean_nonadopter <- as.matrix(colMeans(HNdata_0))
+mean_values <- cbind(mean_adopter, mean_nonadopter)
+mean_values <- mean_values[-c(1, 14), ]
+colnames(mean_values) <- c("adopter", "non-adopter")
+
+par(mfrow=c(2,3))
+for(i in 1:14){
+  barplot(mean_values[i, ], main = rownames(mean_values)[i], col = c("yellow", "gray"), beside = TRUE)
+}
+```
+Part-2: Visualization
+From below graphs, we can conclude that the detailed distributions of demographic features of two groups are obviously different in terms of marketplaces, users are strongly influenced by their peers' features and behaviors, and positive correlationships between most features. Besides, it indicates High Note still has opportunities to develop potencial market shares in different countries, different strata of current/potential users, and improve the premiums influence by enhancing platform social features as well.
+
+Detailed analysis is following,
+1) Female premium subscribers are less than male premium subscribers. Female subscribers’ age central range is 21-27 and male subscribers’ age central range is 23-30. Young users are more non-subscribers, especially 12-25. (Graph 1, 2, 3)
+2) Most subscribers are not from US/UK/DE. In US/UK/DE, subscribers’ age distribution is concentrated between around 21-28. However, the subscribers’ age distribution in other countries is concentrated between round 23-32. (Graph 4, 5)
+3) No obvious distribution difference on subscriber’s and non-subscriber’s tenure. (Graph 6)
+4) Users are influenced most by their friends of the same age range and also influenced by their friends’ behaviors. Subscriber-friends Ratio of adopters is higher than that of non-adopters. Friends of adopters are more widely distributed in various countries, not concentrated in US/UK/DE. The male friends do not influence much on user’s decision about subscription or not. (Graph 7, 8, 9, 10)
+5) Most adopters (at least 75%) listened to much more songs, saved much more loved tracks, posted much more on Q&A forum, created more playlists, and received more shouts than non-adopters. (Graph 11, 12, 13, 14, 15)
+6) Adopter has positive correlation-ship with most of the features except “good country”(negative) which coincides with above analysis. And the correlation between adopter and tenure, the average portion of male friends is feeble.
+
+2.1 Visualization by demographics
+```{r}
+attach(HNdata)
+
+par(mfrow=c(1,1))
+#Gender by adopter / non-adopter
+counts <- table(male, adopter)
+counts
+barplot(counts, main = "Graph 1: Gender frequency by Adopter/non-Adopter", ylab = "Frequency", names = c("non-adopter", "adopter"), col = c("Orange", "Gray80"), legend = c("female", "male"), beside = TRUE)
+
+#age by gender and adopter type
+ggplot(HNdata, aes(x = factor(male), y = age, fill = factor(adopter))) + geom_boxplot() + labs(title = "Graph 2: Gender, Age Distribution by Adopter/non-Adopter", x = "0: female 1: male")
+ggplot(HNdata, aes(x = age, fill = factor(adopter))) + geom_bar(position = "fill") + labs(title = "Graph 3: Age distribution by Adopter/non-Adopter")
+
+#Country by adopter type
+counts1 <- table(good_country, adopter)  
+counts1
+barplot(counts1, main = "Graph 4: Users' Country distribution by Adopter/non-adopter", ylab = "Frequency", names = c("non-adopter", "adopter"), col = c("Orange", "Gray80"))
+legend("topright", fill = c("Orange", "Gray80"), legend = c("Other Countries", "US/UK/DE"), col = c("Orange", "Gray80"), bty = "n")
+
+ggplot(HNdata, aes(x = factor(good_country), y = age, fill = factor(adopter))) + geom_boxplot() + labs(title = "Graph 5: Country, Age Distribution by Adopter/non-Adopter", x = "0:US/UK/DE 1:Other Countries")
+
+#tenure distribution of Adopter and non-adopter
+boxplot(tenure ~ adopter, data = HNdata, main = "Graph 6: Tenure of Adopter and non-adopter", names=c("non-adopter", "adopter"))
+
+```
+
+2.2 Visualization by peer
+```{r}
+# create age groups for generally comparing the influence of the age of the social music network
+
+HNdata$age_group = ifelse(between(age, 0, 10), "0-10", 
+                                         ifelse(between(age, 11, 20), "11-20", 
+                                                ifelse(between(age, 21, 30), "21-30", 
+                                                       ifelse(between(age, 31, 40), "30-40", 
+                                                              ifelse(between(age, 41, 50), "40-50", ifelse(between(age, 51, 60), "51-60", ifelse(age >60, ">60", NA)))))))
+
+HNdata$fri_age_group = ifelse(avg_friend_age>=0 & avg_friend_age <= 10, "0-10", ifelse(avg_friend_age>10 & avg_friend_age <= 20, "11-20", ifelse(avg_friend_age>20 & avg_friend_age <= 30, "21-30", ifelse(avg_friend_age>30 & avg_friend_age <= 40, "30-40", ifelse(avg_friend_age>40 & avg_friend_age <= 50, "40-50", ifelse(avg_friend_age>50 & avg_friend_age <= 60, "51-60", ifelse(avg_friend_age >60, ">60", NA)))))))
+
+# create the ratio: the amount of subscriber_friends who are premium account to the whole amount of friends
+HNdata$sub_ratio =  subscriber_friend_cnt/friend_cnt
+
+detach(HNdata)
+attach(HNdata)
+# friends' age influence
+ggplot(HNdata, aes(x=fri_age_group, y = age_group, color = factor(adopter), shape = factor(adopter))) + geom_point() + labs(title = "Graph 7: Users'age and their friends' age Distribution by Adopter/non-Adopter")
+#male friends's influence
+boxplot(avg_friend_male ~ adopter, main = "Graph 8: Male friends proportion of Adopter and non-adopter", names=c("non-adopter", "adopter"))
+#friends and friend of subscriber amount influence
+boxplot(sub_ratio ~ adopter, main = "Graph 9: friend and premium friend amount distribution by Adopter/non-Adopter", names=c("non-adopter", "adopter"))
+
+#friend country count
+boxplot(friend_country_cnt ~ adopter + good_country, main = "Graph 10: country distribution of friends")
+#0.0 "non-adopter,non-good country"
+#1.0 "adopter,non-good country"
+#0.1 "non-adopter,good country"
+#1.1 "adopter,good country")
+```
+
+2.3 Visualization by user engagement
+```{r}
+# according to descriptive statistics, the value of songsListened/lovedTracks/posts/playlists/shouts is very skewed, so the following graphs only display values below 99th percentile for better visualiztion of adopter/non-adopter.
+
+quantile(HNdata$songsListened, probs = c(0.99))
+ggplot(HNdata, aes(factor(adopter), songsListened)) + geom_boxplot() + coord_cartesian(ylim=c(0, 150000)) + labs(title = "Graph 11: Songs listened Distribution by Adopter/non-Adopter")
+
+quantile(HNdata$lovedTracks, probs = c(0.99))
+ggplot(HNdata, aes(factor(adopter), lovedTracks)) + geom_boxplot() + coord_cartesian(ylim=c(0, 1500)) + labs(title = "Graph 12: Loved Tracks Distribution by Adopter/non-Adopter")
+
+quantile(HNdata$posts, probs = c(0.99))
+ggplot(HNdata, aes(factor(adopter), posts)) + geom_boxplot() + coord_cartesian(ylim=c(0, 93)) + labs(title = "Graph 13: Posts Distribution by Adopter/non-Adopter")
+
+ 
+quantile(HNdata$playlists, probs= c(0.99))
+ggplot(HNdata, aes(factor(adopter), playlists)) + geom_boxplot() + coord_cartesian(ylim=c(0, 4)) + labs(title = "Graph 14: Playlists Distribution by Adopter/non-Adopter")
+
+
+quantile(HNdata$shouts, probs = c(0.99))
+ggplot(HNdata, aes(factor(adopter), shouts)) + geom_boxplot() + coord_cartesian(ylim=c(0, 530)) + labs(title = "Graph 15: Shouts Distribution by Adopter/non-Adopter")
+
+```
+
+2.4 Coorelationship between adopters and their demographic features, peers features and demographic features, and the engagement bahaviors. 
+```{r}
+cor_adopter <- subset(HNdata, select = c(adopter, age, male, avg_friend_age, avg_friend_male, friend_cnt, friend_country_cnt, subscriber_friend_cnt, songsListened, lovedTracks, posts, playlists, shouts, tenure, good_country))
+
+corrgram(cor_adopter, order = TRUE, lower.panel = panel.shade,
+         upper.panel = panel.pie, text.panel = panel.txt,
+         main = "Graph 16: Corrgram of Adopter intercorrelations")
+```
+
+Part-3: Propensity Score Matching for testing whether having subscriber friends affects the likelihood of becoming an adopter.
+
+According to above analysis, we learned to be an adopter is impacted by various factors, such as age, gender, the country came from, having subscriber friends or not, the friends who subscribed or not, the interaction activities through the music platform and so on. Therefore, if we want to know whether "having or not having subscriber friend" affects a user to make decision for subscription, we should suppress other variables' confounding impacts on "having subscriber friend or not" and "being an adopter or not".
+
+First of all, let's see 1) whether there is a significant difference of adopter/non-adopter based on the two groups (having or not having subscriber friend). 2) whether other variables have big difference between groups of Having subscriber friend and Having no subscriber friend. (As above analysis, we already know there is an obvious difference between adopters and non-adopters on demographic features, peers' features and platform engagement activities.)
+
+From the t-test result of tiny p-value and the significant mean difference of other variables on having or having not subscriber friend, we can conclude having subscriber friend is impacting to be an adopter or not, and, other variables are impacting the result of having a subscriber friend, beside impacting being an adopter or not, (like "age", "male", "avg_friend_age", "avg_friend_male", "friend_cnt", "friend_country_cnt", "songsListened", "lovedTracks", "posts", "playlists", "shouts", "tenure", "good_country").
+
+Secondly, we calculate the propensity score for matching the obs which are similar between the group of having subscriber friends and having no subscriber friend. From the graph 17, we clearly learned some values of features (other variables) make it easier to have a subscriber friend, but the others not. After matching, we found 19646 obs matched, 9823 obs in each group; and the means of variables between the two groups are pretty much balanced.
+
+Lastly, we do t-test based on matched data and get that "having subscriber friend or not" really has a significant impact on being an adopter or not. And the regression result shows having subscriber friends is a positive impact. For example, two group of users (A and B) have similar features (demographics, peers, activities on High Note music platform), except that A have subscriber friends and B don't have, the odds ratio of A to be an adopter is only 0.095 and that of B to be an adopter is 2.27. When A have subscriber friends, their odds ratio of to be an adopter will increase by 127%
+
+```{r}
+#create variable "has_sub_friend", if the amount of subscriber friend is equal or larger than 1, then set "has_sub_friend" as "1", otherwise, set as "0"
+HNdata$has_sub_friend <- ifelse(HNdata$subscriber_friend_cnt>=1, 1, 0)
+detach(HNdata)
+attach(HNdata)
+
+#set variables used in this section.
+new_vars <-  vars[-7]
+
+# t-test on adopter based on two groups("having subscriber friend" and "having no subscriber friend") 
+# the tiny p-value indicates "having subscriber friend or not" might impact to be an adopter or not.
+t.test(HNdata$adopter ~ HNdata$has_sub_friend)
+```
+
+```{r}
+#mean of a banch of variables based on the two groups (having or having no subscriber friend)
+mean1 <- HNdata %>%
+  group_by(has_sub_friend) %>%
+  dplyr::select(one_of(new_vars)) %>%
+  summarise_all(funs(mean(., na.rm = T)))
+
+mean1 <- as.matrix(mean1)
+
+par(mfrow=c(2,3))
+for(i in 2:14){
+  barplot(mean1[ , i], main = colnames(mean1)[i], 
+          names = c("have not", "have"), col = c("green", "gray"), beside = TRUE)
+}
+```
+
+```{r}
+# Following will caculate propensity score for each observation (user)
+
+# Including all variables related with "adopter" except "subscriber_friend_cnt" and "has_sub_friend" to get a balanced score for matching later on.
+# We won't reduce the indepandent variables for better surpress other variables affects and to best compare the treatment effect of "having subscriber friend or not" on "being an adopter or not"
+match_ps <- glm(has_sub_friend ~ age + male + friend_cnt + avg_friend_age + avg_friend_male + friend_country_cnt + songsListened + lovedTracks + posts + playlists + shouts + tenure + good_country, family = binomial(), data = HNdata)
+summary(match_ps)
+
+# Propensity score for each user 
+score_df <- data.frame(propensity_score = predict(match_ps, type = "response"),
+                     has_sub_friend=match_ps$model$has_sub_friend)
+
+# Graph of propensity score of the two groups (has/has not subscriber friends)
+labs <- paste("Actual result of having subscriber friends:", c("Yes", "No"))
+
+score_df %>%
+  mutate(has_sub_friend = ifelse(has_sub_friend == 1, labs[1], labs[2])) %>%
+  ggplot(aes(x = propensity_score)) +
+  geom_histogram(color = "white") +
+  facet_wrap(~has_sub_friend) +
+  xlab("Probability of having subscriber friends") + 
+  theme_bw() +
+  labs(title = "Graph 17: Propensity Score Distribution by Adopter/non-Adopter")
+  
+
+#matched sampling
+#remove missing values
+HNdata_nomiss <- HNdata %>% dplyr::select(adopter, has_sub_friend, one_of(new_vars)) %>% na.omit()
+#use matchit to get observations matched in the two groups based on balancing every variables impacting "has_sub_friend"
+matched <- matchit(has_sub_friend ~ age + male + friend_cnt + avg_friend_age + avg_friend_male + friend_country_cnt + songsListened + lovedTracks + posts + playlists + shouts + tenure + good_country, method = "nearest", data = HNdata_nomiss)
+
+summary(matched)
+
+# Create datafram only containing matched observations.
+data_match <- match.data(matched)
+dim(data_match) #9823 * 2 matched
+```
+
+```{r}
+# Check mean values again of each variables on two groups
+mean2 <- data_match %>%
+  group_by(has_sub_friend) %>%
+  dplyr::select(one_of(new_vars)) %>%
+  summarise_all(funs(mean(., na.rm = T)))
+
+mean2 <- as.matrix(mean2)
+
+par(mfrow=c(2,3))
+for(i in 2:14){
+  barplot(mean2[ , i], main = colnames(mean2)[i], 
+          names = c("have not", "have"), col = c("blue", "gray"), beside = TRUE)
+}
+
+```
+
+```{r}
+# Estimating "having subscriber friend or not" treatment effects
+t.test(data_match$adopter ~ data_match$has_sub_friend)
+
+# logistic regression on "adopter" based on matched data
+glm_subs <- glm(adopter ~ has_sub_friend, data = data_match, family = binomial())
+summary(glm_subs)
+
+#odds of being an adopter if the person has subscriber friends
+exp(coef(glm_subs))
+
+(exp(coef(glm_subs)) - 1)*100
+
+predict(glm_subs, has_sub_friend = c(0,1), type = "response")
+```
+
+Part-4: Logistic Regression to predict the probability of being an adopter
+Considering values of some variables (friend_cnt, subscriber_friend_cnt, songsListened, lovedTracks, posts, shouts) are extremely large compared with other variables as stated in part 1 and part 2, I applied log value of them into the logistic regression model. After removing the non-significant variable (avg_friend_male), comparing AIC value between two models and checking the health of the reduced model, "glm_adopter_reduce" is finally chosen. 
+
+According to table "co_efficients": 
+(the Intercept is not meaningful, because age cannot be zero):
+
+1) In user's demographic features, gender has the most significant impact to being an adopter. "male" has 41.34% more odds than "female" to subscribe premium music service.
+
+2) In user's peer features, subscriber friends amount has the most significant impact to being an adopter. When the number of subscriber friends increase by 1.718 times (log of subscriber friend count increase by 1 point), the odds ratio would increase 109.72%.
+
+3) In user's music platform engagement features, loved-tracks has the most significant impact to being an adopter. When it increases by 1.718 times (log value increase by 1 point), the odds ratio would increase by 35.13%.
+
+4) Negative impact: "the country amount of friends distribution" has a little bit negative impact which is not the same as our above visualization analysis. "to be an adopter" odds ratio decrease by 2.18% if friends' country number increase by 1 point. "shouts amount" has negative impact too, it's easy for understanding that if a user keeps shouting out, he/she doesn't engage deeply on the music platform and doesn't use the funny/useful functions of the music platform and less likely to subscriber premium. "tenure", if a user stays on the music platform for a long time and still hasn't subscribed, it means he/she satisfies the experience when using the platform or the free-package is enough for him/her. So, the longer a non-adopter stay, the less likely to subscribe. As we got from the above visualization analysis, US/UK/ED do have fewer adopters than other countries. It might because these countries have many music platforms for users to choose and users can benefit from different platforms based their needs.
+
+5) The following predictions give a straight view of probability change.
+
+```{r}
+#transform extreme large data values using log
+attach(HNdata)
+HNdata$lnFriend_cnt <- log(friend_cnt)
+HNdata$lnSub_friend_cnt <- log(subscriber_friend_cnt + 1)
+HNdata$lnSongsListened <- log(songsListened + 1)
+HNdata$lnLovedTracks <- log(lovedTracks + 1)
+HNdata$lnPosts <- log(posts + 1)
+HNdata$lnShouts <- log(shouts + 1)
+
+
+glm_adopter <- glm(adopter ~ age + male + avg_friend_age + avg_friend_male + lnFriend_cnt + friend_country_cnt + lnSub_friend_cnt + lnSongsListened + lnLovedTracks + lnPosts + playlists + lnShouts + tenure + good_country, data = HNdata, family = binomial())
+summary(glm_adopter)
+
+#remove "avg_friend_male" 
+glm_adopter_reduce <- glm(adopter ~ age + male + avg_friend_age + lnFriend_cnt + friend_country_cnt + lnSub_friend_cnt + lnSongsListened + lnLovedTracks + lnPosts + playlists + lnShouts + tenure + good_country, data = HNdata, family = binomial())
+summary(glm_adopter_reduce)
+
+anova(glm_adopter, glm_adopter_reduce, test = "Chisq") # no significant difference between two models, but reduced model has smaller AIC
+# Check the model I am going choose on if having overdispersion
+outlierTest(glm_adopter_reduce) 
+deviance(glm_adopter_reduce)/df.residual(glm_adopter_reduce) # < 1, so no overdispersion
+ 
+# The model "glm_adopter_reduce" fits data well for predicting the likelihood of being an adopter
+
+#interprate coefficient
+co_efficient <-coef(glm_adopter_reduce)
+co_efficient <- as.data.frame(co_efficient)
+colnames(co_efficient) <- c("coef_value")
+co_efficient$coef_value <- round(co_efficient$coef_value, 4)
+# get odds
+co_efficient$odds <- round(exp(co_efficient$coef_value), 4)
+co_efficient$odds_pct_change <- (co_efficient$odds -1) * 100
+co_efficient
+
+# Predition 
+# 1. age from 10 to 60, other variables keep constant
+new_data <- data.frame(age = c(10, 20, 30, 40, 50, 60), male = 0, avg_friend_age = mean(HNdata$avg_friend_age), lnFriend_cnt = mean(HNdata$lnFriend_cnt) , friend_country_cnt = mean(HNdata$friend_country_cnt), lnSub_friend_cnt = mean(HNdata$lnSub_friend_cnt), lnSongsListened = mean(HNdata$lnSongsListened), lnLovedTracks = mean(HNdata$lnLovedTracks), lnPosts = mean(HNdata$lnPosts), playlists = mean(HNdata$playlists), lnShouts = mean(HNdata$lnShouts), tenure = mean(HNdata$tenure), good_country = 0)
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+# 2. gender: female or male, other variables keep constant
+new_data <- data.frame(age = mean(HNdata$age), male = c(0, 1), avg_friend_age = mean(HNdata$avg_friend_age), lnFriend_cnt = mean(HNdata$lnFriend_cnt) , friend_country_cnt = mean(HNdata$friend_country_cnt),lnSub_friend_cnt = mean(HNdata$lnSub_friend_cnt), lnSongsListened = mean(HNdata$lnSongsListened), lnLovedTracks = mean(HNdata$lnLovedTracks), lnPosts = mean(HNdata$lnPosts), playlists = mean(HNdata$playlists), lnShouts = mean(HNdata$lnShouts), tenure = mean(HNdata$tenure), good_country = 0)
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+# 3. average friend age from 10 to 60, other variables keep constant
+new_data <- data.frame(age = mean(HNdata$age), male = 0, avg_friend_age = c(10, 20, 30, 40, 50, 60), lnFriend_cnt = mean(HNdata$lnFriend_cnt) , friend_country_cnt = mean(HNdata$friend_country_cnt), lnSub_friend_cnt = mean(HNdata$lnSub_friend_cnt), lnSongsListened = mean(HNdata$lnSongsListened), lnLovedTracks = mean(HNdata$lnLovedTracks), lnPosts = mean(HNdata$lnPosts), playlists = mean(HNdata$playlists), lnShouts = mean(HNdata$lnShouts), tenure = mean(HNdata$tenure), good_country = 0)
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+# 4. subscriber friends amount from 0 to 5, other variables keep constant
+new_data <- data.frame(age = mean(HNdata$age), male = 0, avg_friend_age = mean(HNdata$avg_friend_age), lnFriend_cnt = mean(HNdata$lnFriend_cnt) , friend_country_cnt = mean(HNdata$friend_country_cnt), lnSub_friend_cnt = c(log(0), log(1), log(2), log(3), log(4), log(5)), lnSongsListened = mean(HNdata$lnSongsListened), lnLovedTracks = mean(HNdata$lnLovedTracks), lnPosts = mean(HNdata$lnPosts), playlists = mean(HNdata$playlists), lnShouts = mean(HNdata$lnShouts), tenure = mean(HNdata$tenure), good_country = 0)
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+# 5. song listened amount from 1000 to 11000, other variables keep constant
+new_data <- data.frame(age = mean(HNdata$age), male = 0, avg_friend_age = mean(HNdata$avg_friend_age), lnFriend_cnt = mean(HNdata$lnFriend_cnt) , friend_country_cnt = mean(HNdata$friend_country_cnt), lnSub_friend_cnt = mean(HNdata$lnSub_friend_cnt), lnSongsListened = c(log(1000), log(3000), log(5000), log(7000), log(9000), log(11000)), lnLovedTracks = mean(HNdata$lnLovedTracks), lnPosts = mean(HNdata$lnPosts), playlists = mean(HNdata$playlists), lnShouts = mean(HNdata$lnShouts), tenure = mean(HNdata$tenure), good_country = 0)
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+# 6. loved tracks amount from 10 to 100, other variables keep constant
+new_data <- data.frame(age = mean(HNdata$age), male = 0, avg_friend_age = mean(HNdata$avg_friend_age), lnFriend_cnt = mean(HNdata$lnFriend_cnt) , friend_country_cnt = mean(HNdata$friend_country_cnt), lnSub_friend_cnt = mean(HNdata$lnSub_friend_cnt), lnSongsListened = mean(HNdata$lnSongsListened), lnLovedTracks = c(log(10), log(50), log(100)), lnPosts = mean(HNdata$lnPosts), playlists = mean(HNdata$playlists), lnShouts = mean(HNdata$lnShouts), tenure = mean(HNdata$tenure), good_country = 0)
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+# 7. Post amount from 1 to 1000, other variables keep constant
+new_data <- data.frame(age = mean(HNdata$age), male = 0, avg_friend_age = mean(HNdata$avg_friend_age), lnFriend_cnt = mean(HNdata$lnFriend_cnt) , friend_country_cnt = mean(HNdata$friend_country_cnt), lnSub_friend_cnt = mean(HNdata$lnSub_friend_cnt), lnSongsListened = mean(HNdata$lnSongsListened), lnLovedTracks = mean(HNdata$lnLovedTracks), lnPosts = c(log(1), log(10), log(100), log(1000)), playlists = mean(HNdata$playlists), lnShouts = mean(HNdata$lnShouts), tenure = mean(HNdata$tenure), good_country = 0)
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+# 8. Amount of playlists created from 1 to 100, other variables keep constant
+new_data <- data.frame(age = mean(HNdata$age), male = 0, avg_friend_age = mean(HNdata$avg_friend_age), lnFriend_cnt = mean(HNdata$lnFriend_cnt) , friend_country_cnt = mean(HNdata$friend_country_cnt), lnSub_friend_cnt = mean(HNdata$lnSub_friend_cnt), lnSongsListened = mean(HNdata$lnSongsListened), lnLovedTracks = mean(HNdata$lnLovedTracks), lnPosts = mean(HNdata$lnPosts), playlists = c(1, 10, 100), lnShouts = mean(HNdata$lnShouts), tenure = mean(HNdata$tenure), good_country = 0)
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+# 9. Amount of shouts received from 1 to 100, other variables keep constant
+new_data <- data.frame(age = mean(HNdata$age), male = 0, avg_friend_age = mean(HNdata$avg_friend_age), lnFriend_cnt = mean(HNdata$lnFriend_cnt) , friend_country_cnt = mean(HNdata$friend_country_cnt), lnSub_friend_cnt = mean(HNdata$lnSub_friend_cnt), lnSongsListened = mean(HNdata$lnSongsListened), lnLovedTracks = mean(HNdata$lnLovedTracks), lnPosts = mean(HNdata$lnPosts), playlists = mean(HNdata$playlists), lnShouts = c(log(1), log(10), log(100)), tenure = mean(HNdata$tenure), good_country = 0)
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+# 10. tenure from 1 to 24, other variables keep constant
+new_data <- data.frame(age = mean(HNdata$age), male = 0, avg_friend_age = mean(HNdata$avg_friend_age), lnFriend_cnt = mean(HNdata$lnFriend_cnt) , friend_country_cnt = mean(HNdata$friend_country_cnt), lnSub_friend_cnt = mean(HNdata$lnSub_friend_cnt), lnSongsListened = mean(HNdata$lnSongsListened), lnLovedTracks = mean(HNdata$lnLovedTracks), lnPosts = mean(HNdata$lnPosts), playlists = mean(HNdata$playlists), lnShouts = mean(HNdata$lnShouts), tenure = c(1, 6, 12, 18, 24), good_country = 0)
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+# 11. user from US/UK/ED or from other countries, other variables keep constant
+new_data <- data.frame(age = mean(HNdata$age), male = 0, avg_friend_age = mean(HNdata$avg_friend_age), lnFriend_cnt = mean(HNdata$lnFriend_cnt) , friend_country_cnt = mean(HNdata$friend_country_cnt), lnSub_friend_cnt = mean(HNdata$lnSub_friend_cnt), lnSongsListened = mean(HNdata$lnSongsListened), lnLovedTracks = mean(HNdata$lnLovedTracks), lnPosts = mean(HNdata$lnPosts), playlists = mean(HNdata$playlists), lnShouts = mean(HNdata$lnShouts), tenure = mean(HNdata$tenure), good_country = c(0, 1))
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+# 12. user's friends amount from 1, 10 to 20, other variables keep constant
+new_data <- data.frame(age = mean(HNdata$age), male = 0, avg_friend_age = mean(HNdata$avg_friend_age), lnFriend_cnt = c(log(1), log(10), log(20)) , friend_country_cnt = mean(HNdata$friend_country_cnt), lnSub_friend_cnt = mean(HNdata$lnSub_friend_cnt), lnSongsListened = mean(HNdata$lnSongsListened), lnLovedTracks = mean(HNdata$lnLovedTracks), lnPosts = mean(HNdata$lnPosts), playlists = mean(HNdata$playlists), lnShouts = mean(HNdata$lnShouts), tenure = mean(HNdata$tenure), good_country = 0)
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+# 13. friend_country_cnt 
+new_data <- data.frame(age = mean(HNdata$age), male = 0, avg_friend_age = mean(HNdata$avg_friend_age), lnFriend_cnt = mean(HNdata$lnFriend_cnt), friend_country_cnt = c(0, 1, 3, 5), lnSub_friend_cnt = mean(HNdata$lnSub_friend_cnt), lnSongsListened = mean(HNdata$lnSongsListened), lnLovedTracks = mean(HNdata$lnLovedTracks), lnPosts = mean(HNdata$lnPosts), playlists = mean(HNdata$playlists), lnShouts = mean(HNdata$lnShouts), tenure = mean(HNdata$tenure), good_country = 0)
+new_data$prob <- predict(glm_adopter_reduce, new_data, type = "response")
+new_data
+
+```
+
