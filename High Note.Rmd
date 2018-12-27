@@ -19,7 +19,7 @@ library(MASS)
 
 ```{r}
 # read data into table HNdata
-HNdata <- data.frame(read.csv("/Users/NINI/Desktop/Master Degree of Business Analytics/Courses/277 Customer and Social Analytics/Midterm exam/HighNote Data Midterm.csv"))
+HNdata <- data.frame(read.csv("/Users/NINI/HighNote Data Midterm.csv"))
 # data is seperated into adopter group and non-adopter group
 HNdata_0 <- filter(HNdata, adopter == 0)
 HNdata_1 <- filter(HNdata, adopter == 1)
